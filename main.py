@@ -3,18 +3,31 @@ from tkinter import ttk
 import mysql.connector as sqltor
 
 class Conn:
+
     def close(self):
         print("Connection does not exist.")
         return None
+    
+    def cursor(self):
+        return None
 
 mycon = Conn()
+mycur = mycon.cursor()
 pwd = 'sqltime'
 
-try:
-    mycon = sqltor.connect(user='root', host='localhost', password=pwd)
-    mycur = mycon.cursor()
-except Exception as e:
-    print("Exception:", e)
+connected = False
+
+def establish_connection():
+    global mycur
+    global mycon
+    global connected
+    try:
+        mycon = sqltor.connect(user='root', host='localhost', password=pwd)
+        mycur = mycon.cursor()
+        print("Connection Established.")
+        connected = True
+    except Exception as e:
+        print("Exception:", e)
 
 def execute(*args):
     try:
@@ -28,6 +41,16 @@ def execute(*args):
 
 root = Tk()
 root.title("MySQL GUI")
+
+root.option_add('*tearOff', FALSE)
+
+menubar = Menu(root)
+root['menu'] = menubar
+
+menu_mysql = Menu(menubar)
+menubar.add_cascade(menu=menu_mysql, label='MySQL')
+
+menu_mysql.add_command(label='Connect', command=establish_connection)
 
 mainframe = ttk.Frame(root, padding="3 3 12 12")
 mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
