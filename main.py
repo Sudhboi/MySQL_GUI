@@ -17,7 +17,7 @@ mycur = mycon.cursor()
 pwd = 'sqltime'
 
 connected = False
-
+debugging = True
 
 def show_connection_box():
 
@@ -26,9 +26,8 @@ def show_connection_box():
         global mycon
         global connected
         try:
-            mycon = sqltor.connect(user=uservar.get(), host=hostvar.get(), password=passvar.get())
+            mycon = sqltor.connect(user=uservar.get(), host=hostvar.get(), password=passvar.get() if not debugging else 'sqltime')
             mycur = mycon.cursor()
-            print("Connection Established.")
             connected = True
             messagebox.showinfo(message='Connection Established Successfully')
             enter_button.state(['!disabled'])
@@ -74,10 +73,13 @@ def execute(*args):
     try:
         cmd = sqlcommand.get()
         mycur.execute(cmd)
+        data = mycur.fetchall()
+        rowcount.set("Command Executed Successfully. Current Cursor Row Count - " + str(mycur.rowcount))        
     except ValueError:
         pass
     except Exception as e:
         messagebox.showinfo(message="Exception: " + str(e))
+        rowcount.set("Command Resulted in Error.")
 
 
 root = Tk()
@@ -97,13 +99,31 @@ mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
 root.columnconfigure(0, weight=1)
 root.rowconfigure(0, weight=1)
 
-sqlcommand = StringVar()
-cmd_entry = ttk.Entry(mainframe, width=50, textvariable=sqlcommand)
-cmd_entry.grid(column=0, row=0, columnspan=3, sticky=(W, E), padx=20, pady=30)
+s1 = ttk.Separator(mainframe, orient="horizontal").grid(row=0, column=0, columnspan=4, sticky=(E, W))
 
-enter_button = ttk.Button(mainframe, width=10, text="Execute", command=execute)
-enter_button.grid(row=0, column=3, padx=20, pady=30)
+input_Frame = ttk.Labelframe(mainframe, text='Input')
+input_Frame.grid(row=1, column=0, columnspan=4, sticky=(N, W, E, S), padx=10, pady=10)
+
+mysql_label = ttk.Label(input_Frame, text='mysql>')
+mysql_label.grid(row=1, column=0, padx=5)
+
+sqlcommand = StringVar()
+cmd_entry = ttk.Entry(input_Frame, width=50, textvariable=sqlcommand)
+cmd_entry.grid(row=1, column=1, columnspan=2, sticky=(W, E), padx=5, pady=5)
+
+enter_button = ttk.Button(input_Frame, width=10, text="Execute", command=execute)
+enter_button.grid(row=1, column=3, padx=5, pady=5)
 enter_button.state(['disabled'])
+
+s2 = ttk.Separator(mainframe, orient="horizontal").grid(row=2, column=0, columnspan=4, sticky=(E, W))
+
+output_Frame = ttk.Labelframe(mainframe, text='Output')
+output_Frame.grid(row=3, column=0, rowspan=4, columnspan=4, padx=10, pady=10,sticky=(N, W, E, S))
+
+rowcount = StringVar()
+rowcount.set("No Command Executed.")
+rowcount_Label = ttk.Label(output_Frame, textvariable=rowcount)
+rowcount_Label.grid(row=3, column=0, columnspan=4, padx=5, pady=5)
 
 cmd_entry.focus()
 root.bind("<Return>", execute)
