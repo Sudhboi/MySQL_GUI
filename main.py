@@ -17,9 +17,10 @@ mycur = mycon.cursor()
 pwd = 'sqltime'
 
 connected = False
+dbconnected = False
 debugging = True
 
-def show_connection_box():
+def show_connection_box(*args):
 
     def establish_connection(*args):
         global mycur
@@ -29,13 +30,14 @@ def show_connection_box():
             mycon = sqltor.connect(user=uservar.get(), host=hostvar.get(), password=passvar.get() if not debugging else 'sqltime')
             mycur = mycon.cursor()
             connected = True
-            messagebox.showinfo(message='Connection Established Successfully')
+            messagebox.showinfo(message='Connection Established Successfully', title="Connection Status")
             enter_button.state(['!disabled'])
             cbox.destroy()
         except Exception as e:
-            messagebox.showinfo(message="Exception: " + str(e))
+            messagebox.showerror(message="Exception: " + str(e), title='Error')
 
     cbox = Toplevel(root)
+    cbox.title("Establish Connection")
 
     frame = ttk.Frame(cbox, padding="3 3 12 12")
     frame.grid()
@@ -69,6 +71,9 @@ def show_connection_box():
     for child in cbox.winfo_children(): 
         child.grid_configure(padx=5, pady=5)
 
+    pass_Entry.focus()
+    cbox.bind("<Return>", establish_connection)
+
 def execute(*args):
     try:
         cmd = sqlcommand.get()
@@ -78,9 +83,61 @@ def execute(*args):
     except ValueError:
         pass
     except Exception as e:
-        messagebox.showinfo(message="Exception: " + str(e))
+        messagebox.showerror(message="Exception: " + str(e), title="Error")
         rowcount.set("Command Resulted in Error.")
 
+def database_change(*args):
+
+    if not connected:
+        messagebox.showerror(message='MySQL Connector not initialized!', title="Connector Status")
+
+    else:
+
+        def use_database(*args):
+            dbopt = database_option.get()
+            if dbopt != "":
+                if dbopt in databases:
+                    mycur.execute("USE {}".format(dbopt))
+                    messagebox.showinfo(message="Database changed to {}.".format(dbopt), title="Database Status")
+                    dbconnected = True
+                    d_box.destroy()
+                else:
+                    try:
+                        msg = "The given database ({}) does not exist.\nWould you like to create one with this name?"
+                        if messagebox.askyesno(message=msg.format(dbopt), title="Create New Database"):
+                            mycur.execute("CREATE database {}".format(dbopt))
+                            mycur.execute("USE {}".format(dbopt))
+                            messagebox.showinfo(message="Database created successfully.\nDatabase changed to {}.".format(dbopt), title='Database Status')
+                            dbconnected = True
+                            d_box.destroy()
+                    except Exception as e:
+                        messagebox.showerror(message="Exception " + str(e))
+            else:
+                messagebox.showerror(message="Database not chosen. Select a database or create a new one.", title='Error')
+                
+
+        mycur.execute("show databases")
+        databases = tuple([i[0] for i in [j for j in mycur.fetchall()]])
+
+        d_box = Toplevel(root)
+        d_box.title("Choose Database")
+
+        frame = ttk.Frame(d_box, padding="3 3 12 12")
+        frame.grid()
+
+        database_label = ttk.Label(d_box, text="Choose Database (Enter name to create new database): ")
+        database_label.grid(row=0, column=0,padx=10, pady=10)
+
+        database_option = StringVar()
+        database_combobox = ttk.Combobox(d_box, textvariable=database_option)
+        database_combobox['values'] = databases
+        database_combobox.grid(row=0, column=1, padx=10, pady=10)
+
+        database_button = ttk.Button(d_box, text='Use Database', command=use_database)
+        database_button.grid(row=0, column=2, padx=10, pady=10)
+
+        database_combobox.focus()
+        d_box.bind("<Return>", use_database)
 
 root = Tk()
 root.title("MySQL GUI")
@@ -93,6 +150,7 @@ menu_mysql = Menu(menubar)
 menubar.add_cascade(menu=menu_mysql, label='MySQL')
 
 menu_mysql.add_command(label='Connect', command=show_connection_box)
+menu_mysql.add_command(label='Change Database', command=database_change)
 
 mainframe = ttk.Frame(root, padding="3 3 12 12")
 mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
